@@ -5,6 +5,7 @@ import { useAudioController } from '../controllers/AudioController';
 import { useTranslationController } from '../controllers/TranslationController';
 import { pcmTo16kBase64, decodeBase64, decodeAudioData, downsampleBuffer } from '../services/audioUtils';
 import { AUDIO_CONSTANTS } from '../models/AudioModel';
+import * as ApiKeyModel from '../models/ApiKeyModel';
 
 const SYSTEM_INSTRUCTION = `You are a real-time simultaneous technical interpreter. 
 Listen to the audio input and provide high-quality translation between English and Turkish. 
@@ -21,7 +22,6 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
-  // Fix: Use state for reactive UI updates of activeMode in App.tsx
   const [activeMode, setActiveModeState] = useState<'AUTO' | 'EN_INPUT' | 'TR_INPUT'>('AUTO');
   const activeModeRef = useRef(activeMode);
 
@@ -42,9 +42,7 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
     sourcesRef.current.forEach(s => {
       try {
         s.stop();
-      } catch (e) {
-        // Ignore errors if source already stopped
-      }
+      } catch (e) {}
     });
     sourcesRef.current.clear();
     if (wakeLockRef.current) {
@@ -70,9 +68,7 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
       const base64Audio = serverContent.modelTurn.parts[0].inlineData.data;
       const ctx = audio.audioContextRef.current;
       if (base64Audio && ctx) {
-        // Fix: Ensure audio context is resumed if suspended by browser policy
         if (ctx.state === 'suspended') await ctx.resume();
-        
         nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
         const buffer = await decodeAudioData(decodeBase64(base64Audio), ctx, AUDIO_CONSTANTS.SAMPLE_RATE_OUTPUT);
         const source = ctx.createBufferSource();
@@ -88,16 +84,12 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
     if (serverContent.turnComplete) translation.commitToHistory(activeModeRef.current);
   };
 
-  // Fix: Implement missing downloadHistoryAsText property requested by App.tsx
   const downloadHistoryAsText = useCallback(() => {
     if (translation.history.length === 0) {
       alert("No conversation history to download.");
       return;
     }
-
-    let content = "TECH INTERPRETER - CONVERSATION HISTORY\n";
-    content += "========================================\n\n";
-
+    let content = "TECH INTERPRETER - CONVERSATION HISTORY\n========================================\n\n";
     translation.history.forEach((pair) => {
       const time = new Date(pair.input.timestamp).toLocaleTimeString();
       content += `[${time}] Speaker (${pair.input.language}): ${pair.input.text}\n`;
@@ -106,7 +98,6 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
       }
       content += "----------------------------------------\n";
     });
-
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -119,32 +110,30 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
   }, [translation.history]);
 
   const connect = async (deviceId: string, isAmbientMode: boolean, captureSystemAudio: boolean) => {
+    const key = ApiKeyModel.getApiKey();
+    if (!key) {
+      translation.setStatus('error');
+      alert("API Key is required to connect.");
+      return;
+    }
+
     try {
       isSessionActiveRef.current = true;
       const { audioContext, inputContext } = audio.initContexts();
       
       let finalStream: MediaStream;
       const micStream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { 
-          deviceId: deviceId ? { exact: deviceId } : undefined, 
-          echoCancellation: !isAmbientMode,
-          noiseSuppression: !isAmbientMode,
-          autoGainControl: true
-        } 
+        audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: !isAmbientMode, noiseSuppression: !isAmbientMode, autoGainControl: true } 
       });
 
       if (captureSystemAudio) {
-        // Fix: Use desktop-only getDisplayMedia for system audio capture
         const systemStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         const mixCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
         const dest = mixCtx.createMediaStreamDestination();
         mixCtx.createMediaStreamSource(micStream).connect(dest);
-        
-        // Ensure system stream has audio before connecting
         if (systemStream.getAudioTracks().length > 0) {
           mixCtx.createMediaStreamSource(systemStream).connect(dest);
         }
-        
         finalStream = dest.stream;
       } else {
         finalStream = micStream;
@@ -153,8 +142,7 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
       audio.setStream(finalStream);
       translation.setStatus('connecting');
 
-      // Fix: Correct initialization using named parameter and process.env.API_KEY directly
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: key });
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         config: { 
@@ -192,7 +180,6 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
         const downsampled = downsampleBuffer(inputData, inputContext.sampleRate, AUDIO_CONSTANTS.TARGET_INPUT_SAMPLE_RATE);
         const base64 = pcmTo16kBase64(downsampled);
         if (base64) {
-            // Fix: Solely rely on sessionPromise resolution
             sessionPromise.then(s => s.sendRealtimeInput({ media: { data: base64, mimeType: 'audio/pcm;rate=16000' } }));
         }
       };

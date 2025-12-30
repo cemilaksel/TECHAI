@@ -2,8 +2,8 @@
 import { useState, useMemo } from 'react';
 import { GoogleGenAI, Type } from '@google/genai';
 import { ESSENTIAL_WORDS } from '../data/essentialWords';
+import * as ApiKeyModel from '../models/ApiKeyModel';
 
-// Interfaces for Study Guide
 export interface StudyCard {
   word: string;
   synonym: string;
@@ -11,7 +11,6 @@ export interface StudyCard {
   isEssential?: boolean;
 }
 
-// Fix: Using recommended model name for text tasks
 const FLASH_MODEL_NAME = 'gemini-3-flash-preview';
 
 export const useStudyGuide = () => {
@@ -31,18 +30,14 @@ export const useStudyGuide = () => {
 
   const [isGeneratingGuide, setIsGeneratingGuide] = useState(false);
 
-  // Computed: Find which words from the Essential list the user has actually used
   const essentialMatches = useMemo(() => {
     return Object.keys(wordStats).filter(word => ESSENTIAL_WORDS.includes(word.toLowerCase()));
   }, [wordStats]);
 
-  // Logic to parse and update word usage - Only for English
   const updateWordStats = (text: string, language: 'EN' | 'TR' | 'Detecting...') => {
     if (language !== 'EN') return;
-
     const normalized = text.toLowerCase();
     const words = normalized.match(/[a-z']+/gu);
-
     if (words) {
       setWordStats(prev => {
         const next = { ...prev };
@@ -58,20 +53,20 @@ export const useStudyGuide = () => {
   };
 
   const generateStudyGuide = async () => {
-    // Priority 1: Essential words that haven't been generated yet
-    const essentialToGenerate = essentialMatches
-        .filter(word => !studyGuide[word])
-        .slice(0, 10); // Take top 10 ungenerated essential words
+    const key = ApiKeyModel.getApiKey();
+    if (!key) {
+      alert("Please set your API key in settings first.");
+      return;
+    }
 
-    // Priority 2: High frequency words (excluding ones already picked)
+    const essentialToGenerate = essentialMatches.filter(word => !studyGuide[word]).slice(0, 10);
     const topWords = Object.entries(wordStats)
       .sort((a, b) => (b[1] as number) - (a[1] as number))
       .map(([word]) => word)
-      .filter(word => !essentialToGenerate.includes(word) && !studyGuide[word]) // Don't duplicate
+      .filter(word => !essentialToGenerate.includes(word) && !studyGuide[word])
       .slice(0, 20 - essentialToGenerate.length);
 
     const targetList = [...essentialToGenerate, ...topWords];
-
     if (targetList.length === 0) {
         alert("No new words to generate guides for yet!");
         return;
@@ -79,9 +74,7 @@ export const useStudyGuide = () => {
 
     setIsGeneratingGuide(true);
     try {
-      // Fix: Correct initialization using named parameter and process.env.API_KEY directly
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+      const ai = new GoogleGenAI({ apiKey: key });
       const schema = {
         type: Type.OBJECT,
         properties: {
@@ -91,28 +84,19 @@ export const useStudyGuide = () => {
               type: Type.OBJECT,
               properties: {
                 word: { type: Type.STRING },
-                synonym: { type: Type.STRING, description: "A common single-word synonym or alternative." },
-                phrase: { type: Type.STRING, description: "A short, natural daily conversation phrase using the word." }
+                synonym: { type: Type.STRING },
+                phrase: { type: Type.STRING }
               },
-              required: ["word", "synonym", "phrase"],
-              propertyOrdering: ["word", "synonym", "phrase"]
+              required: ["word", "synonym", "phrase"]
             }
           }
         },
         required: ["cards"]
       };
 
-      const prompt = `I have a list of English words I use: ${targetList.join(', ')}. 
-              Please generate a study guide. 
-              Important: These words: [${essentialToGenerate.join(', ')}] are from a target vocabulary list. make sure the phrases for these are very high quality.
-              For each word, provide:
-              1. A common synonym (most used alternative).
-              2. A useful, natural conversation phrase (idiom or pattern) I can use in daily life.
-              Return strictly JSON.`;
-
       const response = await ai.models.generateContent({
         model: FLASH_MODEL_NAME,
-        contents: prompt,
+        contents: `Generate a study guide for: ${targetList.join(', ')}. Return strictly JSON.`,
         config: {
           responseMimeType: 'application/json',
           responseSchema: schema
@@ -125,90 +109,46 @@ export const useStudyGuide = () => {
         if (data.cards) {
           const newGuide: Record<string, StudyCard> = { ...studyGuide };
           data.cards.forEach((card: any) => {
-            const isEssential = ESSENTIAL_WORDS.includes(card.word.toLowerCase());
-            newGuide[card.word] = {
-              word: card.word,
-              synonym: card.synonym,
-              phrase: card.phrase,
-              isEssential: isEssential
-            };
+            newGuide[card.word] = { ...card, isEssential: ESSENTIAL_WORDS.includes(card.word.toLowerCase()) };
           });
           setStudyGuide(newGuide);
           localStorage.setItem('techInterpreter_studyGuide', JSON.stringify(newGuide));
         }
       }
     } catch (e) {
-      console.error("Failed to generate study guide", e);
-      alert("Could not generate study guide. Please try again.");
+      console.error(e);
+      alert("Failed to generate guide.");
     } finally {
       setIsGeneratingGuide(false);
     }
   };
 
   const exportGuideAsText = () => {
-    // Sort: Essential words first, then frequency
-    const sortedWords = Object.entries(wordStats)
-      .sort((a, b) => {
-        const isAEssential = ESSENTIAL_WORDS.includes(a[0]);
-        const isBEssential = ESSENTIAL_WORDS.includes(b[0]);
-        if (isAEssential && !isBEssential) return -1;
-        if (!isAEssential && isBEssential) return 1;
-        return (b[1] as number) - (a[1] as number);
-      })
-      .map(([word]) => word);
-
-    if (sortedWords.length === 0) {
-       alert("No words to export.");
-       return;
-    }
-
-    let content = "ENGLISH STUDY GUIDE & ESSENTIAL VOCABULARY TRACKER\nGenerated by Tech Interpreter AI\n==================================================\n\n";
-
-    content += `Total Essential Words Found: ${essentialMatches.length}\n\n`;
-
-    sortedWords.forEach((word, index) => {
+    const sortedWords = Object.entries(wordStats).sort((a, b) => b[1] - a[1]).map(([word]) => word);
+    if (sortedWords.length === 0) return;
+    let content = "STUDY GUIDE\n===========\n\n";
+    sortedWords.forEach((word) => {
       const guide = studyGuide[word];
-      const count = wordStats[word];
-      const isEssential = ESSENTIAL_WORDS.includes(word.toLowerCase());
-      
-      content += `${index + 1}. WORD: ${word.toUpperCase()} ${isEssential ? '[TARGET WORD]' : ''} (Used ${count} times)\n`;
-      if (guide) {
-        content += `   Synonym: ${guide.synonym}\n`;
-        content += `   Phrase:  "${guide.phrase}"\n`;
-      } else {
-        content += `   (No AI guide generated yet)\n`;
-      }
-      content += `---------------------------------\n`;
+      content += `${word.toUpperCase()} (Used ${wordStats[word]}x)\n`;
+      if (guide) content += `   Synonym: ${guide.synonym}\n   Phrase: ${guide.phrase}\n`;
+      content += "---\n";
     });
-
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `StudyGuide_${new Date().toISOString().slice(0,10)}.txt`;
-    document.body.appendChild(link);
+    link.download = `StudyGuide.txt`;
     link.click();
-    document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
   const clearStats = () => {
-    if (confirm('Are you sure you want to delete all word usage history? This cannot be undone.')) {
-      setWordStats({});
-      setStudyGuide({});
+    if (confirm('Clear stats?')) {
+      setWordStats({}); setStudyGuide({});
       localStorage.removeItem('techInterpreter_wordStats');
       localStorage.removeItem('techInterpreter_studyGuide');
     }
   };
 
-  return {
-    wordStats,
-    studyGuide,
-    isGeneratingGuide,
-    essentialMatches,
-    updateWordStats,
-    generateStudyGuide,
-    exportGuideAsText,
-    clearStats
-  };
+  return { wordStats, studyGuide, isGeneratingGuide, updateWordStats, generateStudyGuide, exportGuideAsText, clearStats };
 };

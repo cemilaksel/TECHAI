@@ -5,8 +5,10 @@ import ChatList from './components/ChatList';
 import ControlBar from './components/ControlBar';
 import SettingsModal from './components/SettingsModal';
 import StatsModal from './components/StatsModal';
+import ApiKeyPrompt from './components/ApiKeyPrompt';
 import { useTranslationSession } from './hooks/useTranslationSession';
 import { useStudyGuide } from './hooks/useStudyGuide';
+import { useApiKey } from './hooks/useApiKey';
 import { defaultSettings } from './models/SettingsModel';
 
 const App: React.FC = () => {
@@ -14,6 +16,7 @@ const App: React.FC = () => {
   const [showStats, setShowStats] = useState(false);
   const [settings, setSettings] = useState(defaultSettings);
 
+  const { isValid: hasApiKey, saveKey } = useApiKey();
   const { wordStats, studyGuide, isGeneratingGuide, updateWordStats, generateStudyGuide, exportGuideAsText, clearStats } = useStudyGuide();
 
   const { 
@@ -25,7 +28,9 @@ const App: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-200 font-sans">
+    <div className="flex flex-col h-screen bg-slate-950 text-slate-200 font-sans relative">
+      {!hasApiKey && <ApiKeyPrompt onSave={saveKey} />}
+
       <SettingsModal 
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
@@ -58,6 +63,7 @@ const App: React.FC = () => {
         onOpenSettings={() => setShowSettings(true)}
         onDownloadChat={downloadHistoryAsText}
         onClearChat={clearHistory}
+        hasApiKey={hasApiKey}
       />
 
       <main className="flex-1 overflow-hidden relative">

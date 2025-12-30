@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ConnectionStatus } from '../types';
-import { ChatBubbleLeftRightIcon, ChartBarIcon, Cog6ToothIcon, ArrowDownTrayIcon, SpeakerWaveIcon, SpeakerXMarkIcon, ExclamationTriangleIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ChatBubbleLeftRightIcon, ChartBarIcon, Cog6ToothIcon, ArrowDownTrayIcon, SpeakerWaveIcon, SpeakerXMarkIcon, ExclamationTriangleIcon, TrashIcon, KeyIcon } from '@heroicons/react/24/outline';
 
 interface HeaderProps {
   status: ConnectionStatus;
@@ -13,6 +13,7 @@ interface HeaderProps {
   onOpenSettings: () => void;
   onDownloadChat: () => void;
   onClearChat: () => void;
+  hasApiKey: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -24,7 +25,8 @@ const Header: React.FC<HeaderProps> = ({
   onOpenStats, 
   onOpenSettings,
   onDownloadChat,
-  onClearChat
+  onClearChat,
+  hasApiKey
 }) => {
   return (
     <header className="flex-none h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md px-6 flex items-center justify-between z-10">
@@ -47,6 +49,15 @@ const Header: React.FC<HeaderProps> = ({
                 status === 'error' ? <span className="text-red-400 font-medium flex items-center gap-1">Error <ExclamationTriangleIcon className="w-3 h-3"/></span> : 
                 'Offline'}
              </span>
+             {!hasApiKey && (
+               <>
+                 <span className="text-slate-700">|</span>
+                 <span className="flex items-center gap-1 text-amber-500 font-medium">
+                   <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+                   API Key Required
+                 </span>
+               </>
+             )}
           </div>
         </div>
       </div>
@@ -58,20 +69,17 @@ const Header: React.FC<HeaderProps> = ({
         >
           Auto Detect
         </button>
-        <div className="h-4 w-px bg-slate-700 mx-1 hidden md:block"></div>
         <button 
           onClick={() => setActiveMode('EN_INPUT')}
           className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeMode === 'EN_INPUT' ? 'bg-slate-800 text-white border border-slate-600' : 'text-slate-400 hover:text-white'}`}
         >
-          <span className="hidden md:inline">EN Input</span>
-          <span className="md:hidden">EN</span>
+          EN
         </button>
         <button 
           onClick={() => setActiveMode('TR_INPUT')}
           className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeMode === 'TR_INPUT' ? 'bg-slate-800 text-white border border-slate-600' : 'text-slate-400 hover:text-white'}`}
         >
-          <span className="hidden md:inline">TR Input</span>
-          <span className="md:hidden">TR</span>
+          TR
         </button>
         
         <div className="h-6 w-px bg-slate-700 mx-1"></div>
