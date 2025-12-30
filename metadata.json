@@ -1,0 +1,8 @@
+{
+  "name": "TECHAI",
+  "description": "Real-time bilingual technical interpreter for English and Turkish using Gemini Live API.",
+  "requestFramePermissions": [
+    "microphone",
+    "display-capture"
+  ]
+}
