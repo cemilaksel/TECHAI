@@ -83,7 +83,7 @@
 ## 🖥️ Arayuz Tanitimi
 
 ### Ana Ekran
-![Ana Ekran](screenshots/main-screen.png)
+![Ana Ekran](https://i.imgur.com/gRKgqKs.png)
 
 ### Üst Menü Butonları
 
