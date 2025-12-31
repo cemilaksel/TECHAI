@@ -102,6 +102,8 @@
 
 ## ⚙️ Ayarlar Paneli
 
+![Ayarlar Paneli](https://i.imgur.com/jwJcU79.png)
+
 Sağ üstteki **⚙️** ikonuna tıklayarak erişebilirsiniz.
 
 ### 🔑 Gemini API Key
@@ -125,6 +127,8 @@ Sağ üstteki **⚙️** ikonuna tıklayarak erişebilirsiniz.
 ---
 
 ## 📊 English Study Guide
+
+![English Study Guide](https://i.imgur.com/LprLftP.png)
 
 Üst menüdeki **📊** ikonuna tıklayarak açılır.
 
