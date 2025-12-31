@@ -54,7 +54,7 @@
 
 ### Uygulamayı ilk açtığınızda bu ekran karşınıza çıkacak:
 
-![API Key Ekranı](https://i.imgur.com/1bPpuLj.png)
+![API Key Ekranı](https://i.imgur.com/pkjdQCy.png)
 
 ---
 
