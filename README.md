@@ -51,6 +51,13 @@
 
 > Bu işlem sadece **bir kez** yapılır. Key tarayıcınızda güvenle saklanır.
 
+
+### Uygulamayı ilk açtığınızda bu ekran karşınıza çıkacak:
+
+![API Key Ekranı](https://i.imgur.com/1bPpuLj.png)
+
+---
+
 ### Adım 1: Google AI Studio'ya Giriş
 
 1. Tarayıcınızda şu adresi açın: `https://aistudio.google.com/app/apikey`
