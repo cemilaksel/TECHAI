@@ -191,7 +191,7 @@ Sağ üstteki **⚙️** ikonuna tıklayarak erişebilirsiniz.
 ║           TECH INTERPRETER AI - HIZLI BAŞVURU                ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
-║  🚀 BAŞLATMA                                                 ║
+║  🚀 BAŞLATMA                                                ║
 ║     1. akseltechai.netlify.app adresini aç                   ║
 ║     2. Gemini API key'ini gir (AI Studio'dan al)             ║
 ║     3. 🎤 butonuna bas ve konuşmaya başla                    ║
@@ -208,7 +208,7 @@ Sağ üstteki **⚙️** ikonuna tıklayarak erişebilirsiniz.
 ║  📺 VİDEO ÇEVİRİSİ                                           ║
 ║     1. Include System Audio ayarını aç                       ║
 ║     2. Capture Tab Audio işaretle                            ║
-║     3. Ekran paylaşırken "Sesi de paylaş"ı seç! ⚠️            ║
+║     3. Ekran paylaşırken "Sesi de paylaş"ı seç! ⚠️           ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 ```
