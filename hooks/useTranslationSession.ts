@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { useAudioController } from '../controllers/AudioController';
@@ -18,6 +17,7 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
   
   const isConnectedRef = useRef(false);
   const isSessionActiveRef = useRef(false);
+  const sessionRef = useRef<any>(null);
   const nextStartTimeRef = useRef(0);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
@@ -38,6 +38,17 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
   const stopAll = useCallback(() => {
     isConnectedRef.current = false;
     isSessionActiveRef.current = false;
+    
+    // Close Gemini session
+    if (sessionRef.current) {
+      try {
+        sessionRef.current.close();
+      } catch (e) {
+        console.log('Session close error:', e);
+      }
+      sessionRef.current = null;
+    }
+    
     audio.cleanupAudio();
     sourcesRef.current.forEach(s => {
       try {
@@ -49,7 +60,8 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
         wakeLockRef.current.release();
         wakeLockRef.current = null;
     }
-  }, [audio]);
+    translation.setStatus('disconnected');
+  }, [audio, translation]);
 
   const handleMessage = async (message: any) => {
     const { serverContent } = message;
@@ -168,6 +180,10 @@ export const useTranslationSession = ({ onWordDetected, isAudioOutputEnabled }: 
           }
         }
       });
+
+      // Store the session after it connects
+      const session = await sessionPromise;
+      sessionRef.current = session;
 
       const source = inputContext.createMediaStreamSource(finalStream);
       const processor = inputContext.createScriptProcessor(4096, 1, 1);
